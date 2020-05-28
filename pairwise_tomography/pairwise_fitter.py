@@ -49,7 +49,7 @@ class PairwiseStateTomographyFitter(StateTomographyFitter):
         super().set_preparation_basis("Pauli")
         self._data = {}
 
-    def fit(self, method='auto', standard_weights=True, beta=0.5, **kwargs):
+    def fit(self, method='auto', standard_weights=True, beta=0.5, pairs_list=None, **kwargs):
         """
         Reconstruct pairwise quantum states using CVXPY convex optimization.
 
