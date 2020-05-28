@@ -68,8 +68,6 @@ class PairwiseStateTomographyFitter(StateTomographyFitter):
             obj = {('X', 'X'): <XX>, ('X', 'Y'): <XY>, ...}, where <.> is the 
             expectation value of the two-qubit operator.
         """
-        pairs_list = kwargs.get('pairs_list', None)
-
         # If no list of pairs provided, then evaluate for all qubit pairs
         if not pairs_list:
             indices = range(len(self._qubit_list))
