@@ -91,3 +91,51 @@ def pairwise_state_tomography_circuits(circuit, measured_qubits):
             output_circuit_list.append(meas_layout)
 
     return output_circuit_list
+
+def pairwise_mitigation_circuits(circuit, meas_qubits=None):
+    
+    # if no `meas_qubits` is supplied, mitigation will be
+    # for all qubits in the first (or only) qubit register
+    if not meas_qubits:
+        meas_qubits = circuit.qregs[0]
+    cr = ClassicalRegister(len(meas_qubits))
+    
+    # create a blank version of the circuit
+    blank_circuit = circuit.copy()
+    blank_circuit.data = []
+
+    # determine all circuit names
+    
+    N = len(meas_qubits)
+    n = int(np.ceil(np.log(N)/np.log(2)))+1
+    
+    strings = []
+    for j in range(N):
+        strings.append( bin(j)[2::].zfill(n))
+
+    circuit_names = []
+    for k in range(n):
+        circuit_0 = []
+        circuit_1 = []
+        for j in range(N):
+            circuit_0.append(strings[j][k])
+            circuit_1.append(str((int(strings[j][k])+1)%2))
+        for circuit in [circuit_0,circuit_1]:
+            circuit_names.append(tuple(circuit))
+
+    # create the circuits
+            
+    output_circuit_list = []
+    
+    for circuit_name in circuit_names:
+        meas_layout = blank_circuit.copy(name=str(circuit_name))
+        meas_layout.add_register(cr)
+        
+        for bit_index, qubit in enumerate(meas_qubits):
+            if circuit_name[bit_index]=='1':
+                meas_layout.x(qubit)
+            meas_layout.measure(qubit,cr[bit_index])
+        
+        output_circuit_list.append( meas_layout )
+        
+    return output_circuit_list
