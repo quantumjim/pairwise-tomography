@@ -2,6 +2,9 @@
 Fitter for pairwise state tomography
 """
 
+import scipy.linalg as la
+import numpy as np
+
 from ast import literal_eval
 from itertools import combinations, product
 
@@ -175,3 +178,72 @@ class PairwiseStateTomographyFitter(StateTomographyFitter):
         while int(i/3**l) % 3 == int(j/3**l) % 3:
             l += 1
         return l
+    
+
+class PairwiseMitigationFitter():
+    
+    def __init__(self, miti_results, miti_circs, meas_qubits=None):
+        
+        self.miti_results = miti_results
+        self.miti_circs = miti_circs
+        
+        if not meas_qubits:
+            meas_qubits = miti_circs[0].qregs[0]
+        self.meas_qubits = meas_qubits
+
+        
+    def fit(self,pairs_list=None):
+        
+        bits = ['00','01','10','11']
+        
+        if not pairs_list:
+            N = len(self.meas_qubits)
+            pairs_list = []
+            for j in range(N-1):
+                for k in range(j+1,N):
+                    pairs_list.append( (j,k) )
+
+        Minv = {}
+        for pair in pairs_list:
+            
+            j,k = pair
+            probs = {s:{ms:0 for ms in bits} for s in bits}
+            for circuit in self.miti_circs:
+                circuit_name = eval(circuit.name)
+                s = circuit_name[k]+circuit_name[j]
+                counts = marginal_counts(self.miti_results.get_counts(circuit), [j, k])
+                for ms in counts:
+                    probs[s][ms] += counts[ms]
+            for s in probs:
+                shots = sum(probs[s].values())
+                for ms in probs[s]:
+                    probs[s][ms] /= shots 
+            
+            M = [[ probs[s][ms] for s in bits ] for ms in bits]
+            Minv[pair] = la.inv(M)
+                    
+        return Minv
+    
+    def mitigate_counts(self,counts,pair):
+                
+        bits = ['00','01','10','11']
+        
+        shots = sum(counts.values())
+        
+        for s in bits:
+            if s not in counts:
+                counts[s] = 0
+                
+        c = np.array([ counts[s] for s in bits])
+        Minv = self.fit(pairs_list=[pair])[pair]
+        c = np.dot(Minv,c)
+        
+        for j,s in enumerate(bits):
+            counts[s] = max(c[j],0)
+            
+        new_shots = sum(counts.values())
+        for j,s in enumerate(bits):
+            counts[s] *= shots/new_shots
+        
+        
+        return counts
